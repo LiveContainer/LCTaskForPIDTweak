@@ -7,9 +7,35 @@
 #import "LCKXPCServer.h"
 #import "LCTaskForPIDTweak.h"
 
-@implementation LCKXPCService
-- (instancetype)init {
+@implementation LCKProcessInterface
+- (instancetype)initWithConnection:(NSXPCConnection *)connection {
     self = [super init];
+    self.connection = connection;
+    return self;
+}
+- (void)checkinWithInfo:(NSDictionary *)info {
+    if(!self.info) self.info = info;
+}
+- (void)testShowAlert:(NSString *)message {
+    LCShowAlert([NSString stringWithFormat:@"LCTaskForPIDTweak: %@", message]);
+}
+- (void)allRunningProcessesWithReply:(void (^)(NSArray<NSNumber *> *))reply {
+    reply(LCKXPCService.sharedInstanceIfExists.processList.allKeys);
+}
+
+- (void)proc_pidpath:(pid_t)pid reply:(void (^)(NSString *))reply {
+    reply(LCKXPCService.sharedInstanceIfExists.processList[@(pid)].info[@"ProgramArguments"][0]);
+}
+@end
+
+@implementation LCKXPCService
+static LCKXPCService *sharedInstance;
++ (instancetype)sharedInstanceIfExists {
+    return sharedInstance;
+}
+
+- (instancetype)init {
+    self = sharedInstance = [super init];
     self.listener = [NSXPCListener anonymousListener];
     self.listener.delegate = self;
     [self.listener resume];
@@ -18,31 +44,12 @@
     return self;
 }
 
-// Protocol
-- (void)proc_pidpath:(pid_t)pid reply:(void (^)(NSString *))reply {
-    reply(self.processList[@(pid)][@"ProgramArguments"][0]);
-}
-
-- (void)pid:(pid_t)pid checkinWithInfo:(NSDictionary *)info {
-    // only allow writing to uninitialized entry
-    if(self.processList[@(pid)] != NSNull.null) {
-        //LCShowAlert([NSString stringWithFormat:@"LCKXPCService Violation: guest tried to overwrite exitsing process info"]);
-        return;
-    }
-    
-    self.processList[@(pid)] = info;
-}
-- (void)testShowAlert:(NSString *)message {
-    LCShowAlert([NSString stringWithFormat:@"LCTaskForPIDTweak: %@", message]);
-}
-
 // NSXPCListenerDelegate
 - (BOOL)listener:(NSXPCListener *)listener shouldAcceptNewConnection:(NSXPCConnection *)newConnection {
-    // set process entry to uninitialized
-    self.processList[@(newConnection.processIdentifier)] = NSNull.null;
-    
+    LCKProcessInterface *obj = [[LCKProcessInterface alloc] initWithConnection:newConnection];
+    self.processList[@(newConnection.processIdentifier)] = obj;
     newConnection.exportedInterface = [NSXPCInterface interfaceWithProtocol:@protocol(LCKXPCServiceProtocol)];
-    newConnection.exportedObject = self;
+    newConnection.exportedObject = obj;
     [newConnection resume];
     return YES;
 }

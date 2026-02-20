@@ -27,6 +27,7 @@ void LCShowAlert(NSString *msg);
 @end
 
 // private C APIs
+int csops(pid_t pid, unsigned int ops, void * useraddr, size_t usersize);
 int csops_audittoken(pid_t pid, unsigned int ops, void * useraddr, size_t usersize, audit_token_t * token);
 int proc_pidpath(int pid, void *buffer, uint32_t buffersize);
 mach_port_t xpc_endpoint_copy_listener_port_4sim(xpc_object_t endpoint);

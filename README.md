@@ -10,7 +10,6 @@ Allows CocoaTop and VansonMod(?) to work jailed inside LiveContainer environment
 
 ## Known issues
 - No entitlement simulation for now, so an app can get task port of any other running apps
-- CocoaTop does not show itself in the process list
 
 ## Technical details
 ### Hooked methods

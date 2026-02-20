@@ -7,22 +7,19 @@ static int (*orig_sysctl)(int *name, u_int namelen, void *oldp, size_t *oldlenp,
 static int hook_sysctl_CTL_KERN_PROC_ALL(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
     // TODO: implement via LCKXPCServer
     struct kinfo_proc *procs = (struct kinfo_proc *)oldp;
-    NSMutableDictionary *info = [NSMutableDictionary dictionaryWithContentsOfFile:containerLockPath];
-    if(!info) return 0;
+    __block NSArray<NSNumber *> *pids;
+    [LCKXPCService.sharedClientProxy allRunningProcessesWithReply:^(NSArray<NSNumber *> *p) {
+        pids = p;
+    }];
     size_t count = 0;
-    for(NSDictionary *appUsageInfo in info.allValues) {
-        if(![appUsageInfo isKindOfClass:NSDictionary.class]) continue;
-        uint64_t val57 = [appUsageInfo[@"auditToken57"] longLongValue];
-        audit_token_t token;
-        token.val[5] = val57 >> 32;
-        token.val[7] = val57 & 0xffffffff;
-        csops_audittoken(token.val[5], 0, NULL, 0, &token);
+    for(NSNumber *pid in pids) {
+        csops(pid.intValue, 0, NULL, 0);
         if(errno == ESRCH) continue;
         if(oldp) {
             procs[count].kp_eproc.e_ucred.cr_uid = 501; // uid=501
             procs[count].kp_eproc.e_pcred.p_rgid = 501; // gid=501
             procs[count].kp_eproc.e_ppid = 1; // ppid=1
-            procs[count].kp_proc.p_pid = token.val[5];
+            procs[count].kp_proc.p_pid = pid.intValue;
             snprintf(procs[count].kp_proc.p_comm, sizeof(procs[count].kp_proc.p_comm), "LiveProcess");
         }
         count++;
@@ -75,10 +72,9 @@ void guest_check_in(void) {
     exc_port = 0;
     
     // check in with the kernel server
-    NSDictionary *info = @{
+    [LCKXPCService.sharedClientProxy checkinWithInfo:@{
         @"ProgramArguments": NSProcessInfo.processInfo.arguments
-    };
-    [LCKXPCService.sharedClientProxy pid:getpid() checkinWithInfo:info];
+    }];
 }
 
 void init_guest_apps(void) {

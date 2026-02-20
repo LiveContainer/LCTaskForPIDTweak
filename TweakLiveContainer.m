@@ -18,20 +18,28 @@ static void *exception_server(void *unused) {
     mach_msg_server(mach_exc_server, sizeof(union __RequestUnion__catch_mach_exc_subsystem), exc_port, MACH_MSG_OPTION_NONE);
     return NULL;
 }
-static void *kernel_server(void *unused) {
-    static LCKXPCService *service;
-    assert(!service);
-    service = [LCKXPCService new];
+
+static void LCKStartKernelServer(void) {
+    LCKXPCService *service = [LCKXPCService new];
     kern_port = service.listener.machPort;
     
     // Expose the XPC service to the public
     kern_return_t kr = bootstrap_register(bootstrap_port, (char*)LCTaskForPIDTweak.kernelPortName.UTF8String, kern_port);
     if(kr != KERN_SUCCESS) {
         LCShowAlert([NSString stringWithFormat:@"LCTaskForPIDTweak: bootstrap_register(kern_port) failed: %d", kr]);
-        return NULL;
     }
-   
-    return NULL;
+}
+static void LCKStartFakeHostTaskPort(void) {
+    // for now, LiveContainer itself cannot register its real task port since it would need a supporting process to handle the exception
+    mach_port_t fake_task;
+    kern_return_t kr;
+    kr = bootstrap_check_in(bootstrap_port, [LCTaskForPIDTweak taskPortNameForPID:getpid()].UTF8String, &fake_task);
+    if(kr != KERN_SUCCESS) {
+        LCShowAlert([NSString stringWithFormat:@"LCTaskForPIDTweak: bootstrap_check_in(fake_task) failed: %d", kr]);
+        return;
+    }
+    mach_port_insert_right(mach_task_self(), fake_task, fake_task, MACH_MSG_TYPE_MAKE_SEND);
+    // TODO
 }
 void init_livecontainer(void) {
     // in LiveContainer we make a global exception port
@@ -45,6 +53,11 @@ void init_livecontainer(void) {
     mach_port_insert_right(mach_task_self(), exc_port, exc_port, MACH_MSG_TYPE_MAKE_SEND);
     pthread_t tExc;
     pthread_create(&tExc, NULL, exception_server, NULL);
-    //pthread_create(&tKern, NULL, kernel_server, NULL);
-    kernel_server(NULL);
+    LCKStartKernelServer();
+    //LCKStartFakeHostTaskPort();
+    
+    // check in myself with the kernel server
+    [LCKXPCService.sharedClientProxy checkinWithInfo:@{
+        @"ProgramArguments": NSProcessInfo.processInfo.arguments
+    }];
 }

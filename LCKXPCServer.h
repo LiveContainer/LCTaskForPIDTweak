@@ -8,14 +8,22 @@
 
 @protocol LCKXPCServiceProtocol
 - (void)proc_pidpath:(pid_t)pid reply:(void (^)(NSString *))reply;
+- (void)allRunningProcessesWithReply:(void (^)(NSArray<NSNumber *> *))reply;
 
-- (void)pid:(pid_t)pid checkinWithInfo:(NSDictionary *)info;
+- (void)checkinWithInfo:(NSDictionary *)info;
 - (void)testShowAlert:(NSString *)msg;
 @end
 
-@interface LCKXPCService : NSObject<NSXPCListenerDelegate, LCKXPCServiceProtocol>
+@interface LCKProcessInterface : NSObject<LCKXPCServiceProtocol>
+@property(nonatomic) NSXPCConnection *connection;
+@property(nonatomic) NSDictionary *info;
+- (instancetype)initWithConnection:(NSXPCConnection *)connection;
+@end
+
+@interface LCKXPCService : NSObject<NSXPCListenerDelegate>
 @property(nonatomic) NSXPCListener *listener;
-@property(nonatomic) NSMutableDictionary *processList;
+@property(nonatomic) NSMutableDictionary<NSNumber *, LCKProcessInterface *> *processList;
++ (instancetype)sharedInstanceIfExists;
 @end
 
 @interface LCKXPCService(Client)
