@@ -16,14 +16,15 @@ jobs:
 
     - name: Build
       run: |
-        xcodebuild -scheme LCTaskForPIDTweak 
-                   -project LCTaskForPIDTweak.xcodeproj 
-                   -configuration Release 
-                   -sdk iphoneos 
-                   -derivedDataPath build 
-                   CODE_SIGNING_ALLOWED=NO 
-                   CODE_SIGNING_REQUIRED=NO 
-                   CODE_SIGN_IDENTITY=""
+        xcodebuild -scheme LCTaskForPIDTweak \
+                   -project LCTaskForPIDTweak.xcodeproj \
+                   -configuration Release \
+                   -sdk iphoneos \
+                   -derivedDataPath build \
+                   CODE_SIGNING_ALLOWED=NO \
+                   CODE_SIGNING_REQUIRED=NO \
+                   CODE_SIGN_IDENTITY="" \
+                   AD_HOC_CODE_SIGNING_ALLOWED=YES
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
