@@ -31,3 +31,16 @@ jobs:
       with:
         name: LCTaskForPIDTweak.dylib
         path: build/Build/Products/Release-iphoneos/LCTaskForPIDTweak.dylib
+
+    - name: Nightly Release
+      uses: andelf/nightly-release@5834076edc55cc05975561c9722043f072ac5c26
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with: 
+        body: |
+            **Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+            **Message:** ${{ github.event.head_commit.message }}
+            
+            This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
+        files: |
+            build/Build/Products/Release-iphoneos/LCTaskForPIDTweak.dylib
